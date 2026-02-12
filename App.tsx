@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { ZoneView } from './components/ZoneView';
 import { SettingsModal } from './components/SettingsModal';
 import { Dashboard } from './components/Dashboard';
@@ -70,6 +70,13 @@ const App: React.FC = () => {
   
   const [productSearch, setProductSearch] = useState('');
   const [showProductDropdown, setShowProductDropdown] = useState(false);
+  const [showProductNameDropdown, setShowProductNameDropdown] = useState(false);
+  const [showStructureDropdown, setShowStructureDropdown] = useState(false);
+
+  // Refs for click outside detection
+  const headerSearchRef = useRef<HTMLDivElement>(null);
+  const productNameRef = useRef<HTMLDivElement>(null);
+  const structureRef = useRef<HTMLDivElement>(null);
 
   const availableModels = useMemo(() => [...DEFAULT_MODELS, ...customModels], [customModels]);
 
@@ -88,6 +95,26 @@ const App: React.FC = () => {
       setInputStructure(currentPreset.structure);
     }
   }, [currentPreset]);
+
+  // Click outside handler to close dropdowns
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (headerSearchRef.current && !headerSearchRef.current.contains(event.target as Node)) {
+        setShowProductDropdown(false);
+      }
+      if (productNameRef.current && !productNameRef.current.contains(event.target as Node)) {
+        setShowProductNameDropdown(false);
+      }
+      if (structureRef.current && !structureRef.current.contains(event.target as Node)) {
+        setShowStructureDropdown(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const activeApiKey = useMemo(() => {
     const custom = customApiKeys.find(k => k.id === selectedApiKeyId);
@@ -351,7 +378,7 @@ const App: React.FC = () => {
           {activeView === 'capture' && (
             <div className="mt-2 flex flex-col gap-2 border-t border-slate-800/40 pt-2 pb-1">
               {/* Main Product Selector - Keeps compatibility with presets */}
-              <div className="relative flex-1 flex flex-col">
+              <div className="relative flex-1 flex flex-col" ref={headerSearchRef}>
                   <div className="relative">
                     <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
                     <input 
@@ -438,33 +465,45 @@ const App: React.FC = () => {
                         className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white outline-none focus:border-blue-500"
                       />
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 relative" ref={productNameRef}>
                       <label className="text-[9px] font-black text-slate-500 uppercase flex items-center gap-1"><Tag size={10}/> Sản phẩm</label>
                       <input 
                         type="text" 
                         value={inputProductName}
-                        onChange={(e) => setInputProductName(e.target.value)}
-                        list="available-products"
+                        onChange={(e) => { setInputProductName(e.target.value); setShowProductNameDropdown(true); }}
+                        onFocus={() => setShowProductNameDropdown(true)}
                         placeholder="Tên sản phẩm..."
                         className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white outline-none focus:border-blue-500"
                       />
-                      <datalist id="available-products">
-                        {visibleProductOptions.map((p, i) => <option key={i} value={p} />)}
-                      </datalist>
+                      {showProductNameDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-[50] max-h-48 overflow-y-auto custom-scrollbar">
+                           {visibleProductOptions.map((p, i) => (
+                             <div key={i} onClick={() => { setInputProductName(p); setShowProductNameDropdown(false); }} className="p-2.5 hover:bg-blue-600 cursor-pointer border-b border-slate-800 last:border-0 transition-colors">
+                               <div className="font-bold text-white text-xs">{p}</div>
+                             </div>
+                           ))}
+                        </div>
+                      )}
                     </div>
-                    <div className="flex flex-col gap-1">
+                    <div className="flex flex-col gap-1 relative" ref={structureRef}>
                       <label className="text-[9px] font-black text-slate-500 uppercase flex items-center gap-1"><FileType size={10}/> Cấu trúc</label>
                       <input 
                         type="text" 
                         value={inputStructure}
-                        onChange={(e) => setInputStructure(e.target.value)}
-                        list="available-structures"
+                        onChange={(e) => { setInputStructure(e.target.value); setShowStructureDropdown(true); }}
+                        onFocus={() => setShowStructureDropdown(true)}
                         placeholder="Cấu trúc..."
                         className="bg-slate-800 border border-slate-700 rounded-lg p-2 text-xs font-bold text-white outline-none focus:border-blue-500"
                       />
-                      <datalist id="available-structures">
-                        {visibleStructureOptions.map((s, i) => <option key={i} value={s} />)}
-                      </datalist>
+                      {showStructureDropdown && (
+                        <div className="absolute top-full left-0 right-0 mt-1 bg-slate-900 border border-slate-700 rounded-lg shadow-2xl z-[50] max-h-48 overflow-y-auto custom-scrollbar">
+                           {visibleStructureOptions.map((s, i) => (
+                             <div key={i} onClick={() => { setInputStructure(s); setShowStructureDropdown(false); }} className="p-2.5 hover:bg-blue-600 cursor-pointer border-b border-slate-800 last:border-0 transition-colors">
+                               <div className="font-bold text-white text-xs">{s}</div>
+                             </div>
+                           ))}
+                        </div>
+                      )}
                     </div>
                  </div>
 
